@@ -1,5 +1,6 @@
 from ai_review.libs.asynchronous.gather import bounded_gather
 from ai_review.libs.logger import get_logger
+from ai_review.libs.constants.vcs_provider import VCSProvider
 from ai_review.services.cost.types import CostServiceProtocol
 from ai_review.services.diff.types import DiffServiceProtocol
 from ai_review.services.git.types import GitServiceProtocol
@@ -88,23 +89,24 @@ class InlineReviewRunner(ReviewRunnerProtocol):
         review_info = await self.vcs.get_review_info()
         logger.info(f"Starting inline review: {len(review_info.changed_files)} files changed")
 
-        # Prevent duplicate runs when inline comments are not retrievable via API.
-        lock_body = self._build_inline_lock(review_info.head_sha)
-        try:
-            general_comments = await self.vcs.get_general_comments()
-            if any(self._has_inline_lock(comment.body, review_info.head_sha) for comment in general_comments):
-                logger.info(
-                    f"Detected inline review lock for {review_info.head_sha}, skipping inline review"
-                )
-                return
-        except Exception as error:
-            logger.warning(f"Failed to check inline review lock: {error}")
+        if settings.vcs.provider == VCSProvider.GITEA:
+            # Prevent duplicate runs when inline comments are not retrievable via API.
+            lock_body = self._build_inline_lock(review_info.head_sha)
+            try:
+                general_comments = await self.vcs.get_general_comments()
+                if any(self._has_inline_lock(comment.body, review_info.head_sha) for comment in general_comments):
+                    logger.info(
+                        f"Detected inline review lock for {review_info.head_sha}, skipping inline review"
+                    )
+                    return
+            except Exception as error:
+                logger.warning(f"Failed to check inline review lock: {error}")
 
-        try:
-            await self.vcs.create_general_comment(lock_body)
-            logger.info(f"Created inline review lock for {review_info.head_sha}")
-        except Exception as error:
-            logger.warning(f"Failed to create inline review lock: {error}")
+            try:
+                await self.vcs.create_general_comment(lock_body)
+                logger.info(f"Created inline review lock for {review_info.head_sha}")
+            except Exception as error:
+                logger.warning(f"Failed to create inline review lock: {error}")
 
         changed_files = self.review_policy.apply_for_files(review_info.changed_files)
         await bounded_gather([

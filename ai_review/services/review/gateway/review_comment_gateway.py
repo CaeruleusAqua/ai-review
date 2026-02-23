@@ -8,6 +8,7 @@ from ai_review.services.review.internal.inline.schema import InlineCommentListSc
 from ai_review.services.review.internal.inline_reply.schema import InlineCommentReplySchema
 from ai_review.services.review.internal.summary.schema import SummaryCommentSchema
 from ai_review.services.review.internal.summary_reply.schema import SummaryCommentReplySchema
+from ai_review.libs.constants.vcs_provider import VCSProvider
 from ai_review.services.vcs.types import VCSClientProtocol, ReviewThreadSchema, ReviewCommentSchema
 
 logger = get_logger("REVIEW_COMMENT_GATEWAY")
@@ -147,7 +148,7 @@ class ReviewCommentGateway(ReviewCommentGatewayProtocol):
             logger.info("No new inline comments to post after dedupe")
             return
 
-        if hasattr(self.vcs, "create_inline_comments"):
+        if settings.vcs.provider == VCSProvider.GITEA and hasattr(self.vcs, "create_inline_comments"):
             try:
                 await self.vcs.create_inline_comments(filtered)
                 for comment in filtered:
