@@ -18,6 +18,7 @@ from ai_review.services.vcs.types import (
     ReviewThreadSchema,
     ReviewCommentSchema,
 )
+from ai_review.services.review.internal.inline.schema import InlineCommentSchema
 
 logger = get_logger("GITEA_VCS_CLIENT")
 
@@ -123,6 +124,34 @@ class GiteaVCSClient(VCSClientProtocol):
             logger.info(f"Created inline comment in {self.pull_request_ref} at {file}:{line}")
         except Exception as error:
             logger.exception(f"Failed to create inline comment in {self.pull_request_ref} at {file}:{line}: {error}")
+            raise
+
+    async def create_inline_comments(self, comments: list[InlineCommentSchema]) -> None:
+        if not comments:
+            return
+
+        try:
+            logger.info(f"Posting {len(comments)} inline comments in {self.pull_request_ref} as a single review")
+            request = GiteaCreateReviewRequestSchema(
+                body="Inline review",
+                comments=[
+                    GiteaReviewInlineCommentSchema(
+                        path=comment.file,
+                        body=comment.body_with_tag,
+                        new_position=comment.line,
+                    )
+                    for comment in comments
+                ],
+            )
+            await self.http_client.pr.create_review(
+                owner=self.owner,
+                repo=self.repo,
+                pull_number=self.pull_number,
+                request=request,
+            )
+            logger.info(f"Created inline review with {len(comments)} comments in {self.pull_request_ref}")
+        except Exception as error:
+            logger.exception(f"Failed to create inline review in {self.pull_request_ref}: {error}")
             raise
 
     async def delete_general_comment(self, comment_id: int | str) -> None:

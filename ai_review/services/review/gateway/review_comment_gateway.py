@@ -147,6 +147,16 @@ class ReviewCommentGateway(ReviewCommentGatewayProtocol):
             logger.info("No new inline comments to post after dedupe")
             return
 
+        if hasattr(self.vcs, "create_inline_comments"):
+            try:
+                await self.vcs.create_inline_comments(filtered)
+                for comment in filtered:
+                    await self.artifacts.save_vcs_inline(comment)
+                return
+            except Exception as error:
+                logger.exception(f"Failed to create inline review batch: {error}")
+                # fall back to per-comment posting
+
         await bounded_gather([self.process_inline_comment(comment) for comment in filtered])
 
     async def clear_inline_comments(self) -> None:
