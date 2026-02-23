@@ -17,7 +17,8 @@ def get_gitea_http_client() -> GiteaHTTPClient:
     logger_event_hook = LoggerEventHook(logger=logger)
     retry_transport = RetryTransport(
         logger=logger,
-        transport=AsyncHTTPTransport(verify=settings.vcs.http_client.verify)
+        transport=AsyncHTTPTransport(verify=settings.vcs.http_client.verify),
+        retry_methods=("GET", "HEAD", "OPTIONS"),
     )
 
     client = AsyncClient(

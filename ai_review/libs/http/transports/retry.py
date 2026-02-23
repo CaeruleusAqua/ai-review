@@ -20,18 +20,22 @@ class RetryTransport(AsyncBaseTransport):
                     HTTPStatus.GATEWAY_TIMEOUT,
                     HTTPStatus.SERVICE_UNAVAILABLE,
                     HTTPStatus.INTERNAL_SERVER_ERROR,
-            )
+            ),
+            retry_methods: tuple[str, ...] | None = None,
     ):
         self.logger = logger
         self.transport = transport
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.retry_status_codes = retry_status_codes
+        self.retry_methods = tuple(method.upper() for method in retry_methods) if retry_methods else None
 
     async def handle_async_request(self, request: Request) -> Response:
         last_response: Response | None = None
         for attempt in range(self.max_retries):
             last_response = await self.transport.handle_async_request(request)
+            if self.retry_methods and request.method.upper() not in self.retry_methods:
+                return last_response
             if last_response.status_code not in self.retry_status_codes:
                 return last_response
 
