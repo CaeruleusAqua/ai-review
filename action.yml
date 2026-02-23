@@ -20,7 +20,7 @@ runs:
         python-version: '3.12'
 
     - name: Install XAI Review
-      run: pip install --no-cache-dir xai-review==0.59.0
+      run: pip install --no-cache-dir git+ssh://git@github.com/CaeruleusAqua/ai-review.git@1f9a13404612e190eda59c2252d23fa353820877
       shell: bash
 
     - name: Run AI Review
