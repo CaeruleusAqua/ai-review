@@ -20,7 +20,16 @@ runs:
         python-version: '3.12'
 
     - name: Install XAI Review
-      run: pip install --no-cache-dir git+https://github.com/CaeruleusAqua/ai-review.git@1f9a13404612e190eda59c2252d23fa353820877
+      run: pip install --no-cache-dir git+https://github.com/CaeruleusAqua/ai-review.git@379e7548161d807e63c621af184eab88317ddc97
+      shell: bash
+
+    - name: Debug inline comments impl
+      run: |
+        python - <<'PY'
+        from ai_review.services.vcs.gitea.client import GiteaVCSClient
+        import inspect
+        print("get_inline_comments:\n", inspect.getsource(GiteaVCSClient.get_inline_comments))
+        PY
       shell: bash
 
     - name: Run AI Review
