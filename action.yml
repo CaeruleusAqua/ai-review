@@ -20,7 +20,9 @@ runs:
         python-version: '3.12'
 
     - name: Install XAI Review
-      run: pip install --no-cache-dir git+https://github.com/CaeruleusAqua/ai-review.git@gitea_fix2
+      run: | 
+        pip uninstall -y xai-review
+        pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/CaeruleusAqua/ai-review.git@gitea_fix2
       shell: bash
 
     - name: Debug inline comments impl
