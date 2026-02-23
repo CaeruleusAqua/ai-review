@@ -20,6 +20,13 @@ class GiteaPullRequestsHTTPClientProtocol(Protocol):
 
     async def get_comments(self, owner: str, repo: str, pull_number: str) -> GiteaGetPRCommentsResponseSchema: ...
 
+    async def get_review_comments(
+            self,
+            owner: str,
+            repo: str,
+            pull_number: str
+    ) -> GiteaGetPRCommentsResponseSchema: ...
+
     async def create_comment(
             self,
             owner: str,

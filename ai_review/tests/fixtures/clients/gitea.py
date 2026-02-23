@@ -80,6 +80,20 @@ class FakeGiteaPullRequestsHTTPClient(GiteaPullRequestsHTTPClientProtocol):
             ]
         )
 
+    async def get_review_comments(self, owner: str, repo: str, pull_number: str) -> GiteaGetPRCommentsResponseSchema:
+        self.calls.append(("get_review_comments", {"owner": owner, "repo": repo, "pull_number": pull_number}))
+        return GiteaGetPRCommentsResponseSchema(
+            root=[
+                GiteaPRCommentSchema(
+                    id=11,
+                    body="Inline review comment",
+                    path="src/main.py",
+                    line=10,
+                    user=GiteaUserSchema(id=203, login="carol"),
+                ),
+            ]
+        )
+
     async def create_comment(
             self,
             owner: str,

@@ -35,7 +35,7 @@ async def test_get_general_comments_returns_list(
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("gitea_http_client_config")
-async def test_get_inline_comments_returns_fallback_general_comments(
+async def test_get_inline_comments_returns_review_comments(
         gitea_vcs_client: GiteaVCSClient,
         fake_gitea_pull_requests_http_client: FakeGiteaPullRequestsHTTPClient,
 ):
@@ -43,6 +43,8 @@ async def test_get_inline_comments_returns_fallback_general_comments(
     assert isinstance(comments, list)
     assert all(isinstance(comment, ReviewCommentSchema) for comment in comments)
     assert len(comments) > 0
+    calls = [name for name, _ in fake_gitea_pull_requests_http_client.calls]
+    assert "get_review_comments" in calls
 
 
 @pytest.mark.asyncio

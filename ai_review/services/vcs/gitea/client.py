@@ -74,13 +74,15 @@ class GiteaVCSClient(VCSClientProtocol):
             return []
 
     async def get_inline_comments(self) -> list[ReviewCommentSchema]:
-        comments = await self.get_general_comments()
-        if comments:
-            logger.warning(
-                f"Gitea API does not support inline comments — "
-                f"returning {len(comments)} general comments as fallback inline comments"
+        try:
+            response = await self.http_client.pr.get_review_comments(
+                owner=self.owner, repo=self.repo, pull_number=self.pull_number
             )
-        return comments
+            logger.info(f"Fetched inline review comments for {self.pull_request_ref}")
+            return [get_review_comment_from_gitea_comment(comment) for comment in response.root]
+        except Exception as error:
+            logger.exception(f"Failed to fetch inline review comments for {self.pull_request_ref}: {error}")
+            return []
 
     async def create_general_comment(self, message: str) -> None:
         try:
