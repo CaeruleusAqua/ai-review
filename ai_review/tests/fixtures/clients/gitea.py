@@ -17,7 +17,9 @@ from ai_review.clients.gitea.pr.schema.pull_request import (
 )
 from ai_review.clients.gitea.pr.schema.reviews import (
     GiteaCreateReviewRequestSchema,
-    GiteaCreateReviewResponseSchema
+    GiteaCreateReviewResponseSchema,
+    GiteaGetPRReviewsResponseSchema,
+    GiteaReviewSchema
 )
 from ai_review.clients.gitea.pr.schema.user import GiteaUserSchema
 from ai_review.clients.gitea.pr.types import GiteaPullRequestsHTTPClientProtocol
@@ -79,6 +81,10 @@ class FakeGiteaPullRequestsHTTPClient(GiteaPullRequestsHTTPClientProtocol):
                 ),
             ]
         )
+
+    async def get_reviews(self, owner: str, repo: str, pull_number: str) -> GiteaGetPRReviewsResponseSchema:
+        self.calls.append(("get_reviews", {"owner": owner, "repo": repo, "pull_number": pull_number}))
+        return GiteaGetPRReviewsResponseSchema(root=[GiteaReviewSchema(id=1)])
 
     async def get_review_comments(self, owner: str, repo: str, pull_number: str) -> GiteaGetPRCommentsResponseSchema:
         self.calls.append(("get_review_comments", {"owner": owner, "repo": repo, "pull_number": pull_number}))

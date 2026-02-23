@@ -9,7 +9,8 @@ from ai_review.clients.gitea.pr.schema.files import GiteaGetPRFilesResponseSchem
 from ai_review.clients.gitea.pr.schema.pull_request import GiteaGetPRResponseSchema
 from ai_review.clients.gitea.pr.schema.reviews import (
     GiteaCreateReviewRequestSchema,
-    GiteaCreateReviewResponseSchema
+    GiteaCreateReviewResponseSchema,
+    GiteaGetPRReviewsResponseSchema
 )
 
 
@@ -19,6 +20,8 @@ class GiteaPullRequestsHTTPClientProtocol(Protocol):
     async def get_files(self, owner: str, repo: str, pull_number: str) -> GiteaGetPRFilesResponseSchema: ...
 
     async def get_comments(self, owner: str, repo: str, pull_number: str) -> GiteaGetPRCommentsResponseSchema: ...
+
+    async def get_reviews(self, owner: str, repo: str, pull_number: str) -> GiteaGetPRReviewsResponseSchema: ...
 
     async def get_review_comments(
             self,

@@ -1,6 +1,10 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
+
+
+class GiteaReviewSchema(BaseModel):
+    id: int
 
 
 class GiteaReviewInlineCommentSchema(BaseModel):
@@ -19,3 +23,7 @@ class GiteaCreateReviewRequestSchema(BaseModel):
 
 class GiteaCreateReviewResponseSchema(BaseModel):
     id: int
+
+
+class GiteaGetPRReviewsResponseSchema(RootModel[list[GiteaReviewSchema]]):
+    root: list[GiteaReviewSchema]

@@ -15,7 +15,8 @@ from ai_review.clients.gitea.pr.schema.files import (
 from ai_review.clients.gitea.pr.schema.pull_request import GiteaGetPRResponseSchema
 from ai_review.clients.gitea.pr.schema.reviews import (
     GiteaCreateReviewRequestSchema,
-    GiteaCreateReviewResponseSchema
+    GiteaCreateReviewResponseSchema,
+    GiteaGetPRReviewsResponseSchema
 )
 from ai_review.clients.gitea.pr.types import GiteaPullRequestsHTTPClientProtocol
 from ai_review.clients.gitea.tools import gitea_has_next_page
@@ -61,15 +62,27 @@ class GiteaPullRequestsHTTPClient(HTTPClient, GiteaPullRequestsHTTPClientProtoco
         )
 
     @handle_http_error(client="GiteaPullRequestsHTTPClient", exception=GiteaPullRequestsHTTPClientError)
+    async def get_reviews_api(
+            self,
+            owner: str,
+            repo: str,
+            pull_number: str
+    ) -> Response:
+        return await self.get(
+            f"/repos/{owner}/{repo}/pulls/{pull_number}/reviews"
+        )
+
+    @handle_http_error(client="GiteaPullRequestsHTTPClient", exception=GiteaPullRequestsHTTPClientError)
     async def get_review_comments_api(
             self,
             owner: str,
             repo: str,
             pull_number: str,
+            review_id: int,
             query: GiteaGetPRCommentsQuerySchema
     ) -> Response:
         return await self.get(
-            f"/repos/{owner}/{repo}/pulls/{pull_number}/comments",
+            f"/repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/comments",
             query=QueryParams(**query.model_dump())
         )
 
@@ -145,22 +158,34 @@ class GiteaPullRequestsHTTPClient(HTTPClient, GiteaPullRequestsHTTPClientProtoco
         )
         return GiteaGetPRCommentsResponseSchema(root=items)
 
+    async def get_reviews(self, owner: str, repo: str, pull_number: str) -> GiteaGetPRReviewsResponseSchema:
+        response = await self.get_reviews_api(owner, repo, pull_number)
+        return GiteaGetPRReviewsResponseSchema.model_validate_json(response.text)
+
     async def get_review_comments(self, owner: str, repo: str, pull_number: str) -> GiteaGetPRCommentsResponseSchema:
-        async def fetch_page(page: int) -> Response:
-            query = GiteaGetPRCommentsQuerySchema(page=page, per_page=settings.vcs.pagination.per_page)
-            return await self.get_review_comments_api(owner, repo, pull_number, query)
+        reviews = await self.get_reviews(owner, repo, pull_number)
+        if not reviews.root:
+            return GiteaGetPRCommentsResponseSchema(root=[])
 
-        def extract_items(response: Response) -> list[GiteaPRCommentSchema]:
-            result = GiteaGetPRCommentsResponseSchema.model_validate_json(response.text)
-            return result.root
+        all_comments: list[GiteaPRCommentSchema] = []
+        for review in reviews.root:
+            async def fetch_page(page: int) -> Response:
+                query = GiteaGetPRCommentsQuerySchema(page=page, per_page=settings.vcs.pagination.per_page)
+                return await self.get_review_comments_api(owner, repo, pull_number, review.id, query)
 
-        items = await paginate(
-            max_pages=settings.vcs.pagination.max_pages,
-            fetch_page=fetch_page,
-            extract_items=extract_items,
-            has_next_page=gitea_has_next_page
-        )
-        return GiteaGetPRCommentsResponseSchema(root=items)
+            def extract_items(response: Response) -> list[GiteaPRCommentSchema]:
+                result = GiteaGetPRCommentsResponseSchema.model_validate_json(response.text)
+                return result.root
+
+            items = await paginate(
+                max_pages=settings.vcs.pagination.max_pages,
+                fetch_page=fetch_page,
+                extract_items=extract_items,
+                has_next_page=gitea_has_next_page
+            )
+            all_comments.extend(items)
+
+        return GiteaGetPRCommentsResponseSchema(root=all_comments)
 
     async def create_comment(
             self,
