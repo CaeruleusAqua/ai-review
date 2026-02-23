@@ -18,6 +18,30 @@ class ReviewCommentGateway(ReviewCommentGatewayProtocol):
         self.vcs = vcs
         self.artifacts = artifacts
 
+    @staticmethod
+    def _normalize_comment_file(value: str | None) -> str:
+        if not value:
+            return ""
+        return value.strip().replace("\\", "/").lstrip("/")
+
+    @staticmethod
+    def _normalize_comment_body(value: str | None) -> str:
+        return (value or "").strip().lower()
+
+    def _inline_comment_key_from_existing(self, comment: ReviewCommentSchema) -> tuple[str, int, str]:
+        return (
+            self._normalize_comment_file(comment.file),
+            int(comment.line or 0),
+            self._normalize_comment_body(comment.body),
+        )
+
+    def _inline_comment_key_from_new(self, comment: InlineCommentSchema) -> tuple[str, int, str]:
+        return (
+            self._normalize_comment_file(comment.file),
+            int(comment.line),
+            self._normalize_comment_body(comment.body_with_tag),
+        )
+
     async def get_inline_threads(self) -> list[ReviewThreadSchema]:
         threads = await self.vcs.get_inline_threads()
         inline_threads = [
@@ -109,7 +133,21 @@ class ReviewCommentGateway(ReviewCommentGatewayProtocol):
             await hook.emit_summary_comment_error(comment)
 
     async def process_inline_comments(self, comments: InlineCommentListSchema) -> None:
-        await bounded_gather([self.process_inline_comment(comment) for comment in comments.root])
+        existing_comments = await self.get_inline_comments()
+        existing_keys = {self._inline_comment_key_from_existing(comment) for comment in existing_comments}
+
+        filtered = []
+        for comment in comments.root:
+            if self._inline_comment_key_from_new(comment) in existing_keys:
+                logger.info(f"Skipping duplicate inline comment for {comment.file}:{comment.line}")
+                continue
+            filtered.append(comment)
+
+        if not filtered:
+            logger.info("No new inline comments to post after dedupe")
+            return
+
+        await bounded_gather([self.process_inline_comment(comment) for comment in filtered])
 
     async def clear_inline_comments(self) -> None:
         await hook.emit_clear_inline_comments_start()
