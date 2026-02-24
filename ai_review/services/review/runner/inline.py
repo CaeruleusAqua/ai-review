@@ -1,6 +1,7 @@
 from ai_review.libs.asynchronous.gather import bounded_gather
 from ai_review.libs.logger import get_logger
 from ai_review.libs.constants.vcs_provider import VCSProvider
+from ai_review.config import settings
 from ai_review.services.cost.types import CostServiceProtocol
 from ai_review.services.diff.types import DiffServiceProtocol
 from ai_review.services.git.types import GitServiceProtocol
